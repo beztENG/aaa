@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Disk Scheduling Algorithm</title>
+      <style>
+        canvas {
+          border: 1px solid black;
+        }
+      </style>
+    <script>
+        // Hàm tính toán kết quả
+        function calculate() {
+            // Lấy giá trị đầu vào từ người dùng
+            var diskArray = document.getElementById("diskArray").value.split(",").map(Number);
+            var startPosition = parseInt(document.getElementById("startPosition").value);
+            var diskLimit = parseInt(document.getElementById("diskLimit").value);
+            var schedulingAlgorithm = document.getElementById("schedulingAlgorithm").value;            
+
+            // Gọi hàm xử lý tương ứng với thuật toán được chọn
+            var result = {};
+            if (schedulingAlgorithm === "FCFS") {
+                result = FCFS(diskArray, startPosition, diskLimit);
+            } else if (schedulingAlgorithm === "SSTF") {
+                result = SSTF(diskArray, startPosition, diskLimit);
+            } else if (schedulingAlgorithm === "Lookup") {
+                result = Lookup(diskArray, startPosition, diskLimit);
+            } else if (schedulingAlgorithm === "Look down") {
+                result = Lookdown(diskArray, startPosition, diskLimit);
+            } else if (schedulingAlgorithm === "Clook up") {
+                result = ClookUp(diskArray, startPosition, diskLimit);
+            } else if (schedulingAlgorithm === "Clook down") {
+                result = ClookDown(diskArray, startPosition, diskLimit);
+            }
+
+            // Hiển thị kết quả
+            document.getElementById("resultArray").innerHTML = "Mảng sau khi áp dụng thuật toán: " + result.array.join(", ");
+            document.getElementById("resultHeadMovement").innerHTML = "Cylinder: " + result.headMovement;
+
+            createTableCanvas(diskArray, startPosition, diskLimit, result);
+        }
+
+                //Canvas
+
+        function createTableCanvas(diskArray, startPosition, diskLimit, result) {
+
+          //Vẽ bảng
+          var canvas = document.getElementById('tablecanvas');
+          var ctx = canvas.getContext('2d');
+          var diskCopy = diskArray.slice();
+          diskCopy.push(0);
+          diskCopy.push(startPosition);
+          diskCopy.push(diskLimit);
+
+          ctx.font = '15px serif';  
+          ctx.clearRect(0, 0, canvas.width, canvas.height);      
+
+          diskCopy.sort(function(a, b) {
+            return a - b;
+          });
+
+          for (var i = 0; i < diskCopy.length; i++) {
+            ctx.fillText(diskCopy[i], (diskCopy[i]*4),20 );//Vẽ ra các số trong mảng
+          }
+
+          ctx.beginPath();
+          ctx.strokeStyle = 'black';//Đặt màu đường
+          ctx.lineWidth = 3; //Độ rộng
+
+          ctx.moveTo(2,20);
+          ctx.lineTo(diskLimit*4, 20);
+          ctx.stroke();
+
+          //Vẽ line
+          var diskCopy = result.array.slice();
+
+          var xm, ym;//x, y vị trí di chuyển đến
+          var xl, yl;//x, y vị trí vẽ đến
+
+          for(var i = 0;i <diskCopy.length;i++){
+            xm = diskCopy[i]*4;//Tọa độ của điểm bắt đầu vẽ
+            ym = 20+(i*4);
+
+            xl = diskCopy[i+1]*4;//Tọa độ vẽ line đến
+            yl =  20+((i+1)*4);
+
+            ctx.beginPath();
+            ctx.strokeStyle = 'red';//Đặt màu đường
+            ctx.lineWidth = 2; //Độ rộng
+
+            ctx.moveTo(xm,ym);
+            ctx.lineTo(xl, yl);
+            ctx.stroke();
+          }
+
+          //Vẽ điểm
+
+          var x, y;
+          ctx.font = '30px serif';
+
+          for(var i=0; i<diskCopy.length; i++){
+            x = diskCopy[i]*4;
+            y = 20+(i*4);
+
+
+            ctx.fillText('.', x, y);
+          }
+        }
+
+        // Hàm FCFS (First-Come, First-Served)
+        function FCFS(diskArray, startPosition, diskLimit) {
+            var resultArray = [...diskArray];
+            var currentPos = startPosition;
+            var headMovement = 0;
+            for (var i = 0; i < resultArray.length; i++) {
+                headMovement += Math.abs(resultArray[i] - currentPos);
+                currentPos = resultArray[i];
+            }
+            resultArray.unshift(startPosition);
+            return { array: resultArray, headMovement: headMovement };
+        }
+
+        // Hàm SSTF (Shortest Seek Time First)
+        function SSTF(diskArray, startPosition) {
+          var diskCopy = diskArray.slice(); // Tạo một bản sao của mảng đĩa để không làm thay đổi mảng gốc
+          var currentPos = startPosition; // Vị trí hiện tại của đầu đọc/đầu ghi
+          var resultArray = []; // Mảng kết quả chứa các vị trí của đĩa theo thứ tự được sắp xếp
+          var headMovement = 0; // Tổng số bước di chuyển của đầu đọc/đầu ghi
+
+          while (diskCopy.length > 0) {
+            var shortestDistance = Math.abs(diskCopy[0] - currentPos); // Khoảng cách ngắn nhất ban đầu
+            var shortestIndex = 0; // Chỉ số của vị trí có khoảng cách ngắn nhất
+
+            // Tìm vị trí có khoảng cách ngắn nhất từ vị trí hiện tại
+            for (var i = 1; i < diskCopy.length; i++) {
+              var distance = Math.abs(diskCopy[i] - currentPos);
+              if (distance < shortestDistance) {
+                shortestDistance = distance;
+                shortestIndex = i;
+              }
+            }
+
+            // Thêm vị trí có khoảng cách ngắn nhất vào mảng kết quả
+            resultArray.push(diskCopy[shortestIndex]);
+
+            // Cập nhật vị trí hiện tại và tổng số bước di chuyển
+            currentPos = diskCopy[shortestIndex];
+            headMovement += shortestDistance;
+
+            // Xóa vị trí đã được thêm vào mảng kết quả
+            diskCopy.splice(shortestIndex, 1);
+          }
+
+          resultArray.unshift(startPosition);
+          return {
+            array: resultArray,
+            headMovement: headMovement
+          };
+        }
+
+
+        // Hàm Lookup
+        function Lookup(diskArray, startPosition, diskLimit) {
+          var diskCopy = diskArray.slice(); // Tạo một bản sao của mảng đĩa để không làm thay đổi mảng gốc
+          var currentPos = startPosition; // Vị trí hiện tại của đầu đọc/đầu ghi
+          var resultArray = []; // Mảng kết quả chứa các vị trí của đĩa theo thứ tự được sắp xếp
+          var headMovement = 0; // Tổng số bước di chuyển của đầu đọc/đầu ghi
+
+          //Chèn vị trí bắt đầu vào mảng
+          diskCopy.push(currentPos);
+
+          // Sắp xếp mảng đĩa theo thứ tự tăng dần
+          diskCopy.sort(function(a, b) {
+            return a - b;
+          });
+
+          // Di chuyển từ vị trí hiện tại đến vị trí cuối cùng trong mảng đĩa
+          for (var i = diskCopy.indexOf(startPosition); i < diskCopy.length; i++) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+          //Di chuyển từ vị trí hiện đến vị trí đầu
+          for (var i = (diskCopy.indexOf(startPosition)) - 1; i >= 0; i--) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+
+          return {
+            array: resultArray,
+            headMovement: headMovement
+          };
+        }
+
+          
+         function Lookdown(diskArray, startPosition, diskLimit) {
+          var diskCopy = diskArray.slice(); // Tạo một bản sao của mảng đĩa để không làm thay đổi mảng gốc
+          var currentPos = startPosition; // Vị trí hiện tại của đầu đọc/đầu ghi
+          var resultArray = []; // Mảng kết quả chứa các vị trí của đĩa theo thứ tự được sắp xếp
+          var headMovement = 0; // Tổng số bước di chuyển của đầu đọc/đầu ghi
+
+          //Chèn vị trí bắt đầu vào mảng
+          diskCopy.push(currentPos);
+
+          // Sắp xếp mảng đĩa theo thứ tự tăng dần
+          diskCopy.sort(function(a, b) {
+            return a - b;
+          });
+
+          // Di chuyển từ vị trí hiện tại đến vị trí đầu tiên trong mảng đĩa
+          for (var i = diskCopy.indexOf(startPosition); i >= 0; i--) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+
+          for(var i = (diskCopy.indexOf(startPosition)) + 1; i< diskCopy.length; i++){
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+
+          return {
+            array: resultArray,
+            headMovement: headMovement
+          };
+        }
+        // Hàm Clook up
+        function ClookUp(diskArray, startPosition, diskLimit) {
+          var diskCopy = diskArray.slice(); // Tạo một bản sao của mảng đĩa để không làm thay đổi mảng gốc
+          var currentPos = startPosition; // Vị trí hiện tại của đầu đọc/đầu ghi
+          var resultArray = []; // Mảng kết quả chứa các vị trí của đĩa theo thứ tự được sắp xếp
+          var headMovement = 0; // Tổng số bước di chuyển của đầu đọc/đầu ghi
+
+          //Chèn vị trí bắt đầu vào mảng
+          diskCopy.push(currentPos);
+
+          // Sắp xếp mảng đĩa theo thứ tự tăng dần
+          diskCopy.sort(function(a, b) {
+            return a - b;
+          });
+
+          // Di chuyển từ vị trí hiện tại đến vị trí cuối cùng trong mảng đĩa
+          for (var i = diskCopy.indexOf(startPosition); i < diskCopy.length; i++) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+          //Di chuyển đến vị trí cuối rồi từ đó đến vị trí khởi đầu
+          for (var i = 0; i < diskCopy.indexOf(startPosition); i++) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+
+          return {
+            array: resultArray,
+            headMovement: headMovement
+          };
+        }
+
+        // Hàm Clook down
+        function ClookDown(diskArray, startPosition, diskLimit) {
+          var diskCopy = diskArray.slice(); // Tạo một bản sao của mảng đĩa để không làm thay đổi mảng gốc
+          var currentPos = startPosition; // Vị trí hiện tại của đầu đọc/đầu ghi
+          var resultArray = []; // Mảng kết quả chứa các vị trí của đĩa theo thứ tự được sắp xếp
+          var headMovement = 0; // Tổng số bước di chuyển của đầu đọc/đầu ghi
+
+          //Chèn vị trí bắt đầu vào mảng
+          diskCopy.push(currentPos);
+
+          // Sắp xếp mảng đĩa theo thứ tự tăng dần
+          diskCopy.sort(function(a, b) {
+            return a - b;
+          });
+
+          // Di chuyển từ vị trí hiện tại đến vị trí đầu tiên trong mảng đĩa
+          for (var i = diskCopy.indexOf(startPosition); i >= 0; i--) {
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+          //Di chuyển đến vị trí cuối từ đây di chuyển đến vị trí khởi đầu
+          for(var i = diskCopy.length - 1 ; i>diskCopy.indexOf(startPosition); i--){
+            resultArray.push(diskCopy[i]);
+            headMovement += Math.abs(diskCopy[i] - currentPos);
+            currentPos = diskCopy[i];
+          }
+
+          return {
+            array: resultArray,
+            headMovement: headMovement
+          };
+        }
+
+
+    </script>
+</head>
+<body>
+    <h1>Disk Scheduling Algorithm</h1>
+
+    <label for="diskArray">Mảng đĩa:</label>
+    <input type="text" id="diskArray" placeholder="Nhập mảng đĩa">
+
+    <label for="startPosition">Vị trí bắt đầu:</label>
+    <input type="number" id="startPosition" placeholder="Nhập vị trí bắt đầu">
+
+    <label for="diskLimit">Giới hạn đĩa:</label>
+    <input type="number" id="diskLimit" placeholder="Nhập giới hạn đĩa">
+
+    <label for="schedulingAlgorithm">Thuật toán lập lịch đĩa:</label>
+    <select id="schedulingAlgorithm">
+        <option value="FCFS">FCFS</option>
+        <option value="SSTF">SSTF</option>
+        <option value="Lookup">Lookup</option>
+        <option value="Look down">Look down</option>
+        <option value="Clook up">Clook up</option>
+        <option value="Clook down">Clook down</option>
+    </select>
+
+    <button onclick="calculate()">Tính toán</button>
+
+    <h2>Kết quả:</h2>
+    <p id="resultArray"></p>
+    <p id="resultHeadMovement"></p>
+
+    <canvas id="tablecanvas" width="1500" height="500"></canvas>
+
+</body>
+</html>
